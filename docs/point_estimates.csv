@@ -1,0 +1,4 @@
+model,VaR,ES
+historical,1.77%,3.18%
+parametric_normal,1.74%,1.99%
+ewma_conditional_normal,1.39%,1.59%

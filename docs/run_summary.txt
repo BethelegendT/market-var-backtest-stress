@@ -1,0 +1,12 @@
+Point estimates (full sample)
+alpha=0.99
+historical: VaR=1.77%, ES=3.18%
+parametric: VaR=1.74%, ES=1.99%
+ewma: VaR=1.39%, ES=1.59%
+
+Tables:
+- point_estimates.csv
+- backtest_summary.csv
+- stress_summary.csv
+
+See report.md for a single-page GitHub-friendly summary.

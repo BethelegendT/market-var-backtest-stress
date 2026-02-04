@@ -1,0 +1,4 @@
+scenario,hist_VaR,hist_ES,param_VaR,param_ES,ewma_VaR,ewma_ES
+Base,1.77%,3.18%,1.74%,1.99%,1.39%,1.59%
+Mild,3.30%,5.13%,3.26%,3.59%,2.71%,3.11%
+Severe,6.54%,9.36%,6.47%,6.98%,7.10%,8.13%
