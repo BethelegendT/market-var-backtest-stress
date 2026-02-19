@@ -1,31 +1,33 @@
 # Market VaR / ES — Backtesting + Stress Testing (Python)
 
-A small, review-friendly market risk project: compute **VaR/ES** and demonstrate two core risk workflows:
-- **Backtesting**: does VaR break as often as expected? (exceptions + **Kupiec** test)
-- **Stress testing**: how much does tail risk expand under adverse shocks?
+A compact, review-friendly **market risk** project that computes **VaR/ES** and demonstrates two core risk workflows:
 
-**One-page results:** [`docs/report.md`](docs/report.md)  
-**Data:** this repo ships with a **synthetic** daily price series (`data/sample_prices.csv`) so it runs offline and is reproducible.
+1) **Backtesting** — do VaR exceptions occur as often as expected? (exceptions + **Kupiec** unconditional coverage test)  
+2) **Stress testing** — how does tail risk expand under adverse, explainable shocks?
 
----
-
-## What’s included
-**Models (loss-based, positive numbers):**
-- Historical simulation
-- Parametric (Normal)
-- EWMA conditional normal (RiskMetrics-style)
-
-**Auto-generated outputs (in `docs/`):**
-- [`report.md`](docs/report.md) — one-page summary (tables)
-- `point_estimates.csv`
-- `backtest_summary.csv`
-- `stress_summary.csv`
-- `loss_hist.png`
-- `backtest_*.png` — exceptions are marked
+**One-page output:** `reports/example_run/report.md`  
+**Runs offline:** ships with a small synthetic daily price series (`data/sample_prices.csv`).
 
 ---
 
-## Quick start
+## What’s inside
+
+### Risk models (loss-based, positive numbers)
+- **Historical simulation**
+- **Parametric (Normal)**
+- **EWMA conditional normal** (RiskMetrics-style volatility)
+
+### Validation & reporting
+- Rolling 1-day VaR forecasts
+- Exceptions + exception rate
+- **Kupiec LR test + p-value** (unconditional coverage)
+- Stress scenarios (return shock + volatility multiplier)
+- Plots: loss histogram & backtest charts with exceptions marked
+
+---
+
+## Quick start (reproducible)
+
 ```bash
 pip install -r requirements.txt
-python main.py
+python -m src.market_risk.cli --data data/sample_prices.csv --out reports/example_run --alpha 0.99 --window 500
