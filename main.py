@@ -1,17 +1,26 @@
 from __future__ import annotations
+
 import argparse
 from pathlib import Path
+
 import pandas as pd
 
+from src.backtest import backtest_var
 from src.config import RunConfig
 from src.data import load_prices, returns_from_close
-from src.var_models import historical_var_es, parametric_var_es, ewma_var_es, rolling_var
-from src.backtest import backtest_var
-from src.stress import Scenario, apply_scenario, worst_window_sum
 from src.plotting import loss_hist, loss_vs_var
+from src.stress import Scenario, apply_scenario, worst_window_sum
+from src.var_models import (
+    ewma_var_es,
+    historical_var_es,
+    parametric_var_es,
+    rolling_var,
+)
+
 
 def _pct(x: float) -> str:
-    return f"{100.0*x:.2f}%"
+    return f"{100.0 * x:.2f}%"
+
 
 def _write_report(
     out_dir: Path,
@@ -42,7 +51,9 @@ def _write_report(
     lines.append("- Loss histogram: `loss_hist.png`")
     lines.append("- Backtest plots: `backtest_*.png` (exceptions are marked)")
     lines.append("")
+
     (out_dir / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 def run(data_path: Path, out_dir: Path, cfg: RunConfig) -> None:
     cfg.validate()
@@ -58,26 +69,32 @@ def run(data_path: Path, out_dir: Path, cfg: RunConfig) -> None:
     pv = parametric_var_es(r, cfg.alpha)
     ev = ewma_var_es(r, cfg.alpha)
 
-    point_df = pd.DataFrame([
-        {"model": "historical", "VaR": _pct(hv.var), "ES": _pct(hv.es)},
-        {"model": "parametric_normal", "VaR": _pct(pv.var), "ES": _pct(pv.es)},
-        {"model": "ewma_conditional_normal", "VaR": _pct(ev.var), "ES": _pct(ev.es)},
-    ])
+    point_df = pd.DataFrame(
+        [
+            {"model": "historical", "VaR": _pct(hv.var), "ES": _pct(hv.es)},
+            {"model": "parametric_normal", "VaR": _pct(pv.var), "ES": _pct(pv.es)},
+            {"model": "ewma_conditional_normal", "VaR": _pct(ev.var), "ES": _pct(ev.es)},
+        ]
+    )
     point_df.to_csv(out_dir / "point_estimates.csv", index=False)
 
     # Rolling backtests
-    bt_rows = []
+    bt_rows: list[dict] = []
     for m in ["historical", "parametric", "ewma"]:
         var_fc = rolling_var(r, model=m, window=cfg.window, alpha=cfg.alpha)
         bt = backtest_var(r, var_fc, cfg.alpha)
-        bt_rows.append({
-            "model": m,
-            "n": bt.n,
-            "exceptions": bt.exceptions,
-            "exception_rate": f"{100.0*bt.exception_rate:.2f}%",
-            "kupiec_LR": round(bt.kupiec_LR, 3),
-            "kupiec_p_value": round(bt.kupiec_p_value, 3),
-        })
+
+        bt_rows.append(
+            {
+                "model": m,
+                "n": bt.n,
+                "exceptions": bt.exceptions,
+                "exception_rate": f"{100.0 * bt.exception_rate:.2f}%",
+                "kupiec_LR": round(bt.kupiec_LR, 3),
+                "kupiec_p_value": round(bt.kupiec_p_value, 3),
+            }
+        )
+
         loss_vs_var(r, var_fc, str(out_dir / f"backtest_{m}.png"), alpha=cfg.alpha)
 
     backtest_df = pd.DataFrame(bt_rows).sort_values("model")
@@ -89,18 +106,22 @@ def run(data_path: Path, out_dir: Path, cfg: RunConfig) -> None:
         Scenario("Mild", -0.01, 1.3),
         Scenario("Severe", -0.03, 2.0),
     ]
-    st_rows = []
+
+    st_rows: list[dict] = []
     for sc in scenarios:
         rs = apply_scenario(r, sc)
-        st_rows.append({
-            "scenario": sc.name,
-            "hist_VaR": _pct(historical_var_es(rs, cfg.alpha).var),
-            "hist_ES": _pct(historical_var_es(rs, cfg.alpha).es),
-            "param_VaR": _pct(parametric_var_es(rs, cfg.alpha).var),
-            "param_ES": _pct(parametric_var_es(rs, cfg.alpha).es),
-            "ewma_VaR": _pct(ewma_var_es(rs, cfg.alpha).var),
-            "ewma_ES": _pct(ewma_var_es(rs, cfg.alpha).es),
-        })
+        st_rows.append(
+            {
+                "scenario": sc.name,
+                "hist_VaR": _pct(historical_var_es(rs, cfg.alpha).var),
+                "hist_ES": _pct(historical_var_es(rs, cfg.alpha).es),
+                "param_VaR": _pct(parametric_var_es(rs, cfg.alpha).var),
+                "param_ES": _pct(parametric_var_es(rs, cfg.alpha).es),
+                "ewma_VaR": _pct(ewma_var_es(rs, cfg.alpha).var),
+                "ewma_ES": _pct(ewma_var_es(rs, cfg.alpha).es),
+            }
+        )
+
     stress_df = pd.DataFrame(st_rows)
     stress_df.to_csv(out_dir / "stress_summary.csv", index=False)
 
@@ -108,29 +129,33 @@ def run(data_path: Path, out_dir: Path, cfg: RunConfig) -> None:
     worst_line = f"Ends at **{t.date()}**, cumulative return (simple sum) ≈ **{w:.4f}**"
     (out_dir / "worst_window.txt").write_text(worst_line + "\n", encoding="utf-8")
 
-    # plots
+    # Plots
     loss_hist(r, str(out_dir / "loss_hist.png"))
 
-    # human-readable summary
+    # Human-readable summary
     (out_dir / "run_summary.txt").write_text(
-        "\n".join([
-            "Point estimates (full sample)",
-            f"alpha={cfg.alpha}",
-            f"historical: VaR={_pct(hv.var)}, ES={_pct(hv.es)}",
-            f"parametric: VaR={_pct(pv.var)}, ES={_pct(pv.es)}",
-            f"ewma: VaR={_pct(ev.var)}, ES={_pct(ev.es)}",
-            "",
-            "Tables:",
-            "- point_estimates.csv",
-            "- backtest_summary.csv",
-            "- stress_summary.csv",
-            "",
-            "See report.md for a single-page GitHub-friendly summary.",
-        ]) + "\n",
-        encoding="utf-8"
+        "\n".join(
+            [
+                "Point estimates (full sample)",
+                f"alpha={cfg.alpha}",
+                f"historical: VaR={_pct(hv.var)}, ES={_pct(hv.es)}",
+                f"parametric: VaR={_pct(pv.var)}, ES={_pct(pv.es)}",
+                f"ewma: VaR={_pct(ev.var)}, ES={_pct(ev.es)}",
+                "",
+                "Tables:",
+                "- point_estimates.csv",
+                "- backtest_summary.csv",
+                "- stress_summary.csv",
+                "",
+                "See report.md for a single-page GitHub-friendly summary.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
     )
 
     _write_report(out_dir, cfg.alpha, point_df, backtest_df, stress_df, worst_line)
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -142,6 +167,7 @@ def main() -> None:
 
     cfg = RunConfig(alpha=args.alpha, window=args.window)
     run(Path(args.data), Path(args.out), cfg)
+
 
 if __name__ == "__main__":
     main()
